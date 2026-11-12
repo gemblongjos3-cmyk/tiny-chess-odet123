@@ -1,116 +1,111 @@
-D=(16,-16,1,-1,17,15,-15,-17);K=(33,31,18,14,-14,-18,-31,-33);V={'p':100,'n':320,'b':330,'r':500,'q':900,'k':0};U=str.isupper;L=str.lower
-CS=((4,6,7,(5,6),(4,5,6),'K'),(4,2,0,(1,2,3),(4,3,2),'Q'))
-CR={0:'Q',7:'K',112:'q',119:'k'}
+import os,json,urllib.request
+U=os.environ.get('MAKEFUN_ENV_URL','')
+V={'p':100,'n':320,'b':330,'r':500,'q':900,'k':0}
+D=[1,-1,16,-16,15,17,-15,-17]
 def ld(f):
- a=[0]*128;r=f.split();p=112
- for row in r[0].split('/'):
-  for z in row:
-   if z>'8':a[p]=z;p+=1
-   else:p+=int(z)
-  p-=24
- return a,2*(r[1]=='w')-1,r[2].strip('-'),-1 if r[3]=='-' else int(r[3][1])*16+ord(r[3][0])-113,int(r[4])
-def gn(a,s,c,e,cap=0,t=-1):
- if t>=0:
-  for p in range(128):
-   z=a[p]
-   if p&136 or not z or U(z)!=(s==1):continue
-   z=L(z);ds=K if z=='n' else ((15,17) if s==1 else (-15,-17)) if z=='p' else D if z in 'qk' else D[4:] if z=='b' else D[:4]
-   for d in ds:
-    q=p+d
-    while not q&136:
-     if q==t:return 1
-     if a[q] or z in 'pnk':break
-     q+=d
-  return 0
- o=[]
- for p in range(128):
-  z=a[p]
-  if p&136 or not z or U(z)!=(s==1):continue
-  z=L(z)
-  def put(q,r=''):
-   if a[q] and (U(a[q])==(s==1) or L(a[q])=='k') or cap and not a[q] and q!=e:return
-   o.extend((p,q,x) for x in 'qrbn') if z=='p' and q>>4 in (0,7) else o.append((p,q,r))
-  if z=='p':
-   for d in (16*s,15*s,17*s):
-    q=p+d
-    if q&136:continue
-    if d==16*s:
-     if not cap and not a[q]:
-      put(q);q+=d
-      if p>>4==(1 if s==1 else 6) and not a[q]:put(q)
-    elif (a[q] and U(a[q])!=(s==1) and L(a[q])!='k') or q==e:put(q)
-  else:
-   ds=K if z=='n' else D if z in 'qk' else D[4:] if z=='b' else D[:4]
-   for d in ds:
-    q=p+d
-    while not q&136:
-     if a[q]:
-      if U(a[q])!=(s==1):put(q)
-      break
-     put(q)
-     if z in 'nk':break
-     q+=d
-  if z=='k' and not cap:
-   for f,g,r,em,att,cr in CS:
-    off=112*(s<0);f+=off;g+=off;r+=off
-    if p==f and (cr if s==1 else cr.lower()) in c and not any(a[v+off] for v in em) and a[r]==('R' if s==1 else 'r') and not any(gn(a,-s,c,e,0,v+off) for v in att):o.append((p,g,'c'))
- return o
+ x=f.split();a=['']*128;i=112
+ for c in x[0]:
+  if c=='/':i-=24
+  elif c.isdigit():i+=int(c)
+  else:a[i]=c;i+=1
+ return a,1 if x[1]=='w' else -1,x[2],-1 if x[3]=='-' else ord(x[3][0])-97+16*(int(x[3][1])-1),int(x[4])
+def att(a,q,s):
+ for d in (15,17):
+  z=q-d*s
+  if not z&0x88 and a[z]==('P' if s==1 else 'p'):return 1
+ for d in (-33,-31,-18,-14,14,18,31,33):
+  z=q+d
+  if not z&0x88 and a[z]==('N' if s==1 else 'n'):return 1
+ for d in D:
+  z=q+d
+  while not z&0x88:
+   p=a[z]
+   if p:
+    if p.isupper()==(s==1) and (p.lower()=='q' or d in D[:4] and p.lower()=='r' or d in D[4:] and p.lower()=='b' or z==q+d and p.lower()=='k'):return 1
+    break
+   z+=d
+ return 0
 def mv(a,s,c,e,h,m):
- a=a[:];p,q,r=m;z=a[p];cap=a[q];a[p]=0;a[q]=r.upper() if r and r!='c' and s>0 else r if r and r!='c' else z
- if L(z)=='p' and q==e and p&7!=q&7:cap=a[q-16*s];a[q-16*s]=0
- if r=='c':x,y=(q+1,q-1) if q>p else (q-2,q+1);a[y]=a[x];a[x]=0
- if z in 'Kk':c=c.replace(z,'').replace('Q' if z=='K' else 'q','')
- for x in p,q:c=c.replace(CR.get(x,''),'')
- e=(p+q)//2 if L(z)=='p' and abs(q-p)==32 else -1
- return a,c,e,0 if cap or L(z)=='p' else h+1,cap
-def lg(a,s,c,e,h=0):
- return [m for m in gn(a,s,c,e) if not gn((v:=mv(a,s,c,e,h,m))[0],-s,v[1],v[2],0,v[0].index('K' if s==1 else 'k'))]
-def ev(a):
- return sum((2*U(z)-1)*V[L(z)] for p,z in enumerate(a) if z and not p&136)
-N=0;B=30000
-def ng(a,s,c,e,h,d,l,b,r=0):
- global N
- if r:
-  ms=lg(a,s,c,e,h)
-  if not ms:return None,N
-  for x in ms:
-   z,C,E,F,_=mv(a,s,c,e,h,x);k=z.index('k' if s>0 else 'K')
-   if gn(z,s,C,E,0,k) and not lg(z,-s,C,E,F):return x,0
-  ms.sort(key=lambda m:bool(a[m[1]]),reverse=True)
-  m=ms[0]
-  for dep in range(1,8):
-   best=-99999
-   for x in ms:
-    if N>=B:break
-    z,c1,e1,h1,cap=mv(a,s,c,e,h,x)
-    v=-ng(z,-s,c1,e1,h1,dep-1,-99999,99999)
-    if v>best:best=v;m=x
-   if N>=B:break
-  return m,N
+ p,q,r=m;b=a[:];z=b[p];cap=b[q];b[p]='';b[q]=(r.upper() if s==1 else r) if r not in ('','c') else z
+ if z.lower()=='p' and q==e and p%16!=q%16:cap=b[q-16*s];b[q-16*s]=''
+ if r=='c':
+  x,y=(q+1,q-1) if q>p else (q-2,q+1);b[y]=b[x];b[x]=''
+ if z.lower()=='k':c=c.replace('K','').replace('Q','') if s==1 else c.replace('k','').replace('q','')
+ for x,R in ((0,'Q'),(7,'K'),(112,'q'),(119,'k')):
+  if p==x or q==x:c=c.replace(R,'')
+ return b,c,(p+q)//2 if z.lower()=='p' and abs(q-p)==32 else -1,0 if cap or z.lower()=='p' else h+1,cap
+def lg(a,s,c,e,h):
+ out=[]
+ for p,z in enumerate(a):
+  if p&0x88 or not z or z.isupper()!=(s==1):continue
+  t=z.lower()
+  if t=='p':
+   q=p+16*s
+   if not q&0x88 and not a[q]:
+    out.append((p,q,''))
+    if p//16==(1 if s==1 else 6) and not a[q+16*s]:out.append((p,q+16*s,''))
+   for d in (15*s,17*s):
+    q=p+d
+    if not q&0x88 and ((a[q] and a[q].isupper()!=(s==1) and a[q].lower()!='k') or q==e):out.append((p,q,''))
+  else:
+   ds=(-33,-31,-18,-14,14,18,31,33) if t=='n' else D
+   for d in ds:
+    if t=='b' and d in D[:4] or t=='r' and d in D[4:]:continue
+    q=p+d
+    while not q&0x88:
+     if a[q]:
+      if a[q].isupper()!=(s==1) and a[q].lower()!='k':out.append((p,q,''))
+      break
+     out.append((p,q,''))
+     if t in 'nk':break
+     q+=d
+   if t=='k':
+    for dest,rook,empty,through,R in ((p+2,p+3,(p+1,p+2),(p,p+1,p+2),'K'),(p-2,p-4,(p-1,p-2,p-3),(p,p-1,p-2),'Q')):
+     R=R if s==1 else R.lower()
+     if p==(4 if s==1 else 116) and R in c and a[rook]==('R' if s==1 else 'r') and not any(a[v] for v in empty) and not any(att(a,v,-s) for v in through):out.append((p,dest,'c'))
+ legal=[]
+ for m in out:
+  b,_,_,_,_=mv(a,s,c,e,h,m);k=b.index('K' if s==1 else 'k')
+  if not att(b,k,-s):
+   p,q,r=m
+   legal.extend((p,q,x) for x in 'qrbn') if a[p].lower()=='p' and q//16 in (0,7) else legal.append(m)
+ return legal
+def uc(m):
+ p,q,r=m
+ return chr(97+p%16)+str(p//16+1)+chr(97+q%16)+str(q//16+1)+(r if r not in ('','c') else '')
+nodes=0
+def ev(a):return sum(V[z.lower()]*(1 if z.isupper() else -1) for z in a if z)
+def search(a,s,c,e,h,d,al,be):
+ global nodes
+ nodes+=1
+ if nodes>30000:return ev(a)*s
  if h>=100:return 0
- if N>=B:return s*ev(a)
- N+=1;q=d<=0;v=s*ev(a)
- if q:
-  if v>=b:return v
-  l=max(l,v)
-  if d<=-8:return v
- ms=gn(a,s,c,e,1) if q else lg(a,s,c,e,h)
- if not ms:return 0 if q or gn(a,-s,c,e,0,a.index('K' if s==1 else 'k')) else -30000
- if not q:ms.sort(key=lambda m:bool(a[m[1]]),reverse=True)
+ if d<=0:
+  v=ev(a)*s
+  if v>=be:return v
+  al=max(al,v);ms=[m for m in lg(a,s,c,e,h) if a[m[1]] or m[2]]
+ else:ms=lg(a,s,c,e,h);v=-99999
+ if not ms:return v if d<=0 else (-30000 if att(a,a.index('K' if s==1 else 'k'),-s) else 0)
+ ms.sort(key=lambda m:(-(V.get(a[m[1]].lower(),0) if a[m[1]] else 100 if m[2] else 0),uc(m)))
  for m in ms:
-  z,c1,e1,h1,cap=mv(a,s,c,e,h,m)
-  v=-ng(z,-s,c1,e1,h1,d-1,-b,-l)
-  l=max(l,v)
-  if l>=b:break
- return l
-def ch(f,b=B):
- global N,B;N=0;B=b;return ng(*ld(f),0,-99999,99999,1)
-def uc(m):return chr(97+(m[0]&7))+str((m[0]>>4)+1)+chr(97+(m[1]&7))+str((m[1]>>4)+1)+m[2].strip('c')
-import os as O,json as J
-from urllib.request import Request as R,urlopen as W
-def api(p,d):return J.loads(W(R(O.getenv('MAKEFUN_ENV_URL').rstrip('/')+p,J.dumps(d).encode(),{'Content-Type':'application/json'}),None,10).read())
+  b,C,E,H,_=mv(a,s,c,e,h,m);v=max(v,-search(b,-s,C,E,H,d-1,-be,-al))
+  al=max(al,v)
+  if al>=be:break
+ return v
+def ch(f,budget=30000):
+ global nodes
+ a,s,c,e,h=ld(f);nodes=0;best=None;score=-99999
+ for m in lg(a,s,c,e,h):
+  b,C,E,H,_=mv(a,s,c,e,h,m);v=-search(b,-s,C,E,H,2,-99999,99999)
+  if v>score:best,score=m,v
+  if v>=29999 or nodes>=budget:break
+ return best,nodes
+def post(path,data):
+ r=urllib.request.Request(U+path,data=json.dumps(data).encode(),headers={'content-type':'application/json'})
+ return json.load(urllib.request.urlopen(r))
 if __name__=='__main__':
- while (g:=api('/game',{}))['status']!='done':
+ while 1:
+  g=post('/game',{})
+  if g['status']=='done':break
   while g['status']=='your_move':
-   f=g['fen'];m,n=ch(f)
-   g=api('/move',{'game':g['game'],'move':uc(m)})
+   m,n=ch(g['fen']);g=post('/move',{'game':g['game'],'move':uc(m)})
